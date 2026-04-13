@@ -1,23 +1,20 @@
-import React, { useState } from 'react'; // State -> estado
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView } from 'react-native';
-// Set atribui valores a variáveis, useState é um hook que permite adicionar estado a componentes funcionais em React. 
-// Ele retorna um par: o estado atual e uma função que permite atualizá-lo. O estado é mantido entre renderizações do 
-// componente, permitindo que ele "lembre" informações ao longo do tempo. No contexto de uma calculadora, useState é 
-// usado para armazenar a expressão atual e o resultado, permitindo que a interface do usuário seja atualizada
-// dinamicamente com base nas interações do usuário.
-interface BotaoProps { // define a interface para as propriedades do botão - objeto
-  titulo: string; // obrigatório
-  corFundo?: string; // se tem ? é opcional
-  corTexto?: string;
+
+interface BotaoProps {
+  titulo: string;
+  corFundo?: string;
+  onPress: () => void;
 }
 
-export default function Index() { // componente principal da calculadora
-  const [expressao, setExpressao] = useState<string>(''); // armazena a expressão atual - le
-  const [resultado, setResultado] = useState<string>('0'); // armazena o resultado atual - atribui
+export default function Index() {
+  const [expressao, setExpressao] = useState<string>('');
+  const [resultado, setResultado] = useState<string>('0');
+  const [pressionado, setPressionado] = useState<string | null>(null);
 
-  const operadores = ['+', '-', 'x', '÷', '.']; // array de operadores
+  const operadores = ['+', '-', 'x', '÷', '.'];
 
-  const linhasDeBotoes = [ // array multidimensional que define a disposição dos botões na calculadora
+  const linhasDeBotoes = [
     ['C', '(', ')', '÷'],
     ['7', '8', '9', 'x'],
     ['4', '5', '6', '-'],
@@ -25,82 +22,107 @@ export default function Index() { // componente principal da calculadora
     ['0', '.', '⌫', '=']
   ];
 
-  const obterCorFundo = (botao: string): string => { // define as cores dos botões com base em seu tipo
-    if (botao === 'C') return '#ff3b30';
-    if (botao === '=') return '#34c759';
-    if (['÷', 'x', '-', '+'].includes(botao)) return '#ff9500';
-    if (['(', ')', '⌫'].includes(botao)) return '#555555';
-    return '#333333';
+  const cores = {
+    fundo: '#0f172a',
+    display: '#e2e8f0',
+    numero: '#1e293b',
+    operador: '#38bdf8',
+    especial: '#f59e0b',
+    limpar: '#ef4444',
+    igual: '#22c55e'
   };
 
-  const lidarComToque = (valor: string): void => { // lógica para lidar com o toque nos botões
-    if (valor === 'C') { // limpa a expressão e o resultado
-      setExpressao(''); 
-      setResultado('0'); // numéro que aparece no display quando a calculadora é limpa
-    } else if (valor === '⌫') { // remove o último caractere da expressão
-      const novaExpressao = expressao.slice(0, -1); // navega na array e remove o último caractere da expressão atual
-      setExpressao(novaExpressao); 
-      setResultado(novaExpressao.length > 0 ? novaExpressao : '0'); 
-    } else if (valor === '=') { // calcula o resultado da expressão
-      try { // substitui os símbolos de multiplicação e divisão pelos equivalentes do JavaScript
-        const expressaoFormatada = expressao.replace(/x/g, '*').replace(/÷/g, '/'); // substitui os símbolos de multiplicação e divisão pelos equivalentes do JavaScript
-        const resultadoCalculado = eval(expressaoFormatada); // avalia a expressão formatada
+  const obterCorFundo = (botao: string): string => {
+    if (botao === 'C') return cores.limpar;
+    if (botao === '=') return cores.igual;
+    if (['÷', 'x', '-', '+'].includes(botao)) return cores.operador;
+    if (['(', ')', '⌫'].includes(botao)) return cores.especial;
+    return cores.numero;
+  };
 
-        setResultado(String(resultadoCalculado)); 
-        setExpressao(String(resultadoCalculado)); 
-      } catch (e) {
-        setResultado('Erro'); // exibe "Erro" se a expressão for inválida
-      }
-    } else {
-      if (operadores.includes(valor)) { // validação para evitar operadores consecutivos ou iniciar a expressão com um operador
-        if (expressao === '' && valor !== '-') return; 
-
-        const ultimoCaractere = expressao.slice(-1); 
-
-        if (operadores.includes(ultimoCaractere)) { 
-          const novaExpressao = expressao.slice(0, -1) + valor;
-          setExpressao(novaExpressao);
-          setResultado(novaExpressao);
-          return;
-        }
-      }
-
-      const novaExpressao = expressao + valor; // adiciona o valor tocado à expressão atual
-      setExpressao(novaExpressao);
-      setResultado(novaExpressao);
+  const lidarComToque = (valor: string): void => {
+    if (valor === 'C') {
+      setExpressao('');
+      setResultado('0');
+      return;
     }
+
+    if (valor === '⌫') {
+      const nova = expressao.slice(0, -1);
+      setExpressao(nova);
+      setResultado(nova || '0');
+      return;
+    }
+
+    if (valor === '=') {
+      try {
+        const formatada = expressao.replace(/x/g, '*').replace(/÷/g, '/');
+        const res = eval(formatada);
+        setResultado(String(res));
+        setExpressao(String(res));
+      } catch {
+        setResultado('Erro');
+      }
+      return;
+    }
+
+    if (operadores.includes(valor)) {
+      if (expressao === '' && valor !== '-') return;
+
+      const ultimo = expressao.slice(-1);
+
+      if (operadores.includes(ultimo)) {
+        const nova = expressao.slice(0, -1) + valor;
+        setExpressao(nova);
+        setResultado(nova);
+        return;
+      }
+    }
+
+    const nova = expressao + valor;
+    setExpressao(nova);
+    setResultado(nova);
   };
 
-  const Botao: React.FC<BotaoProps> = ({ titulo, corFundo = "#333333", corTexto = "#ffffff" }) => ( // componente para renderizar cada botão da calculadora
-    <TouchableOpacity // componente de toque para cada botão
-      style={[styles.botao, { backgroundColor: corFundo }]}
-      onPress={() => lidarComToque(titulo)}
-    >
-      <Text style={[styles.textoBotao, { color: corTexto }]}>{titulo}</Text>
-    </TouchableOpacity>
-  );
+  const Botao = ({ titulo, corFundo, onPress }: any) => (
+  <TouchableOpacity
+    style={[
+      styles.botao,
+      { backgroundColor: corFundo },
+    ]}
+    onPress={onPress}
+  >
+    <Text style={styles.textoBotao}>{titulo}</Text>
+  </TouchableOpacity>
+);
 
   return (
-    <SafeAreaView style={styles.container}> 
+    <SafeAreaView style={[styles.container, { backgroundColor: cores.fundo }]}>
+      
+      {/* Display */}
       <View style={styles.displayContainer}>
-        <Text style={styles.textoDisplay} numberOfLines={1} adjustsFontSizeToFit>
+        <Text style={styles.expressao}>{expressao}</Text>
+        <Text style={[styles.resultado, { color: cores.display }]}>
           {resultado}
         </Text>
       </View>
 
-      <View style={styles.tecladoContainer}> 
-        {linhasDeBotoes.map((linha, indexLinha) => ( 
-          <View key={indexLinha} style={styles.linha}>
+      {/* Teclado */}
+      <View style={styles.tecladoContainer}>
+        {linhasDeBotoes.map((linha, i) => (
+          <View key={i} style={styles.linha}>
             {linha.map((botao) => (
               <Botao
                 key={botao}
                 titulo={botao}
                 corFundo={obterCorFundo(botao)}
+                onPress={() => lidarComToque(botao)}
               />
             ))}
           </View>
         ))}
       </View>
+
     </SafeAreaView>
   );
 }
@@ -108,37 +130,53 @@ export default function Index() { // componente principal da calculadora
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
+
   displayContainer: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
     padding: 20,
   },
-  textoDisplay: {
-    fontSize: 70,
-    color: '#ffffff',
+
+  expressao: {
+    fontSize: 28,
+    color: '#94a3b8',
+  },
+
+  resultado: {
+    fontSize: 64,
     fontWeight: '300',
   },
+
   tecladoContainer: {
-    paddingBottom: 30,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 25,
   },
+
   linha: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     marginBottom: 10,
   },
+
   botao: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 75,
+    height: 75,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    marginHorizontal: 6,
   },
+
+  botaoPressionado: {
+    opacity: 0.6,
+    transform: [{ scale: 0.95 }],
+  },
+
   textoBotao: {
-    fontSize: 32,
-    fontWeight: '400',
+    fontSize: 28,
+    fontWeight: '500',
+    color: '#fff',
   },
 });
